@@ -1,15 +1,9 @@
 ## Compilation
 
-Compile the JS as such:
+Build the JS as such:
 
 ```
-coffee --join javascripts/application.js --compile javascripts/src/engine javascripts/src/entities javascripts/src/*.coffee
-```
-
-Add `--watch` to autocompile when changes are made to JS files:
-
-```
-coffee --watch --join javascripts/application.js --compile javascripts/src/engine javascripts/src/entities javascripts/src/*.coffee
+cake build
 ```
 
 ## Getting Started

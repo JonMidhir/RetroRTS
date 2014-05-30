@@ -14,12 +14,12 @@ class Soldier extends Entity
     parseFloat(opacity, 10) is 0
 
   takeDamage: (damage) ->
-    console.log "#{@worldId}: I'm taking damage!"
+    # console.log "#{@worldId}: I'm taking damage!"
     @health -= damage
     @kill() if @health <= 0 and not @isDead()
 
   kill: ->
-    console.log "Officer down!"
+    # console.log "Officer down!"
     @diedAt = new Date()
     @$el.css('background-color', 'black')
 

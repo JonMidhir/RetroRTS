@@ -71,7 +71,7 @@ class Core
   checkCollisions: (entity) ->
     for e in @entities when e isnt entity and e.collidable
       vertex = entity.frame()?.centerVertex() if entity.worldId is 'c2'
-      console.log "Checking #{entity.worldId}: [#{vertex.x}, #{vertex.y}] r:#{entity.frame().radius} is overlapping #{e.worldId}" if entity.worldId is 'c2'
-      #console.log entity.frame().isOverlapping(e.frame()) if entity.worldId is 'c2'
+      # console.log "Checking #{entity.worldId}: [#{vertex.x}, #{vertex.y}] r:#{entity.frame().radius} is overlapping #{e.worldId}" if entity.worldId is 'c2'
+      # console.log entity.frame().isOverlapping(e.frame()) if entity.worldId is 'c2'
       if entity.frame().isOverlapping(e.frame())
         true# entity.interactWith(e)

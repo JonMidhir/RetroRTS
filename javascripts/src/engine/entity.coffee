@@ -41,7 +41,7 @@ class Entity
 
     @$el.css(styles)
 
-    console.log @events
+    # console.log @events
 
     for event, callback of @events
       @$el.on event, {}, @[callback]
@@ -98,5 +98,5 @@ class Entity
 
   # Remove from the DOM
   close: ->
-    console.log "removing entity"
+    # console.log "removing entity"
     @$el.remove()

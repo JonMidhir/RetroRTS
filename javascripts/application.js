@@ -105,9 +105,6 @@
         if (entity.worldId === 'c2') {
           vertex = (_ref1 = entity.frame()) != null ? _ref1.centerVertex() : void 0;
         }
-        if (entity.worldId === 'c2') {
-          console.log("Checking " + entity.worldId + ": [" + vertex.x + ", " + vertex.y + "] r:" + (entity.frame().radius) + " is overlapping " + e.worldId);
-        }
         if (entity.frame().isOverlapping(e.frame())) {
           _results.push(true);
         } else {
@@ -174,7 +171,6 @@
         left: defaults.x - (this.width / 2)
       };
       this.$el.css(styles);
-      console.log(this.events);
       _ref = this.events;
       for (event in _ref) {
         callback = _ref[event];
@@ -234,7 +230,6 @@
     };
 
     Entity.prototype.close = function() {
-      console.log("removing entity");
       return this.$el.remove();
     };
 
@@ -242,36 +237,152 @@
 
   })();
 
-  $(document).ready(function() {
-    window.engine = new Core({
-      viewport: '#game_canvas',
-      fps: 30
-    });
-    window.engine.run();
-    return window.engine.$el.on('click', function(e) {
-      var bomb, canvasOffset, solider, x, y;
-      canvasOffset = window.engine.$el.offset();
-      x = e.pageX - canvasOffset.left;
-      y = e.pageY - canvasOffset.top;
-      if (e.shiftKey) {
-        return solider = window.engine.addEntity(new Soldier(), {
-          x: x,
-          y: y
-        });
-      } else {
-        return bomb = window.engine.addEntity(new Bomb(), {
-          x: x,
-          y: y
-        });
-      }
-    });
-  });
-
   Map = (function() {
 
     function Map() {}
 
     return Map;
+
+  })();
+
+  Vertex = (function() {
+
+    function Vertex(x, y) {
+      var _ref;
+      _ref = [x, y], this.x = _ref[0], this.y = _ref[1];
+    }
+
+    Vertex.prototype.vectorWith = function(vertex) {
+      var vectorX, vectorY;
+      vectorX = this.x - vertex.x;
+      vectorY = this.y - vertex.y;
+      return new Vector(vectorX, vectorY);
+    };
+
+    return Vertex;
+
+  })();
+
+  Vector = (function(_super) {
+
+    __extends(Vector, _super);
+
+    function Vector() {
+      return Vector.__super__.constructor.apply(this, arguments);
+    }
+
+    Vector.prototype.length = function() {
+      return Math.sqrt((this.x * this.x) + (this.y * this.y));
+    };
+
+    Vector.prototype.subtract = function(vector) {
+      return new Vector(this.x - vector.x, this.y - vector.y);
+    };
+
+    Vector.prototype.divideBy = function(scalar) {
+      return (this.x / scalar) + (this.y / scalar);
+    };
+
+    Vector.prototype.dotProductOf = function(scalar) {
+      return (this.x * scalar) + (this.y * scalar);
+    };
+
+    return Vector;
+
+  })(Vertex);
+
+  RectangularFrame = (function() {
+
+    function RectangularFrame(left, top, right, bottom) {
+      var _ref;
+      _ref = [left, top, right, bottom], this.left = _ref[0], this.top = _ref[1], this.right = _ref[2], this.bottom = _ref[3];
+    }
+
+    RectangularFrame.prototype.vertices = function() {
+      return [new Vertex(this.left, this.top), new Vertex(this.right, this.top), new Vertex(this.right, this.bottom), new Vertex(this.left, this.bottom)];
+    };
+
+    RectangularFrame.prototype.isExcluding = function(excludable) {
+      var vertices, _ref, _ref1;
+      if (excludable instanceof Vertex) {
+        return !((this.left <= (_ref = excludable.x) && _ref <= this.right) && (this.top <= (_ref1 = excludable.y) && _ref1 <= this.bottom));
+      } else if (excludable instanceof RectangularFrame) {
+        return excludable.right < this.left || excludable.left > this.right || excludable.top > this.bottom || excludable.bottom < this.top;
+      } else if (excludable instanceof CircularFrame) {
+        vertices = this.vertices();
+        return this.isExcluding(excludable.centerVertex()) && excludable.isExcluding(vertices[0]) && excludable.isExcluding(vertices[1]) && excludable.isExcluding(vertices[2]) && excludable.isExcluding(vertices[3]);
+      }
+    };
+
+    RectangularFrame.prototype.isOverlapping = function(frame) {
+      return !this.isExcluding(frame);
+    };
+
+    return RectangularFrame;
+
+  })();
+
+  CircularFrame = (function() {
+
+    function CircularFrame(x, y, radius) {
+      var _ref;
+      _ref = [x, y, radius], this.x = _ref[0], this.y = _ref[1], this.radius = _ref[2];
+    }
+
+    CircularFrame.prototype.centerVertex = function() {
+      return new Vertex(this.x, this.y);
+    };
+
+    CircularFrame.prototype.isExcluding = function(excludable) {
+      var distance, dx, dy;
+      if (excludable instanceof Vertex) {
+        return !this.isOverlapping(excludable);
+      } else if (excludable instanceof CircularFrame) {
+        dx = this.x - excludable.x;
+        dy = this.y - excludable.y;
+        distance = Math.sqrt((dy * dy) + (dx * dx));
+        return distance > (this.radius + excludable.radius);
+      } else if (excludable instanceof RectangularFrame) {
+        return !this.isOverlapping(excludable);
+      }
+    };
+
+    CircularFrame.prototype.isOverlapping = function(excludable) {
+      var distance, squareDistance, topLeftV, topRightV, vertices;
+      if (excludable instanceof Vertex) {
+        squareDistance = Math.pow(this.x - excludable.x, 2) + Math.pow(this.y - excludable.y, 2);
+        return squareDistance < this.radius;
+      } else if (excludable instanceof CircularFrame) {
+        return this.isExcluding(excludable);
+      } else if (excludable instanceof RectangularFrame) {
+        vertices = excludable.vertices();
+        topLeftV = vertices[0];
+        topRightV = vertices[1];
+        distance = this.intersectionWith(topRightV, topLeftV);
+        console.log(distance.length());
+        return excludable.isExcluding(this.centerVertex()) || this.isExcluding(vertices[0]) && this.isExcluding(vertices[1]) && this.isExcluding(vertices[2]) && this.isExcluding(vertices[3]);
+      }
+    };
+
+    CircularFrame.prototype.intersectionWith = function(v1, v2) {
+      var cVector, closest, distanceV, proj, projV, segLength, segVUnit, segVector;
+      segVector = v1.vectorWith(v2);
+      cVector = v1.vectorWith(this.centerVertex());
+      segLength = segVector.length();
+      segVUnit = segVector.divideBy(segLength);
+      proj = cVector.dotProductOf(segVUnit);
+      if (proj <= 0) {
+        closest = v1;
+      } else if (proj > segLength) {
+        closest = v2;
+      } else {
+        projV = segVUnit * proj;
+        closest = [v1.x + projV, v2 + projV];
+      }
+      return distanceV = cVector.subtract(closest);
+    };
+
+    return CircularFrame;
 
   })();
 
@@ -381,7 +492,6 @@
     };
 
     Soldier.prototype.takeDamage = function(damage) {
-      console.log("" + this.worldId + ": I'm taking damage!");
       this.health -= damage;
       if (this.health <= 0 && !this.isDead()) {
         return this.kill();
@@ -389,7 +499,6 @@
     };
 
     Soldier.prototype.kill = function() {
-      console.log("Officer down!");
       this.diedAt = new Date();
       return this.$el.css('background-color', 'black');
     };
@@ -423,145 +532,29 @@
 
   })(Entity);
 
-  RectangularFrame = (function() {
-
-    function RectangularFrame(left, top, right, bottom) {
-      var _ref;
-      _ref = [left, top, right, bottom], this.left = _ref[0], this.top = _ref[1], this.right = _ref[2], this.bottom = _ref[3];
-    }
-
-    RectangularFrame.prototype.vertices = function() {
-      return [new Vertex(this.left, this.top), new Vertex(this.right, this.top), new Vertex(this.right, this.bottom), new Vertex(this.left, this.bottom)];
-    };
-
-    RectangularFrame.prototype.isExcluding = function(excludable) {
-      var vertices, _ref, _ref1;
-      if (excludable instanceof Vertex) {
-        return !((this.left <= (_ref = excludable.x) && _ref <= this.right) && (this.top <= (_ref1 = excludable.y) && _ref1 <= this.bottom));
-      } else if (excludable instanceof RectangularFrame) {
-        return excludable.right < this.left || excludable.left > this.right || excludable.top > this.bottom || excludable.bottom < this.top;
-      } else if (excludable instanceof CircularFrame) {
-        vertices = this.vertices();
-        return this.isExcluding(excludable.centerVertex()) && excludable.isExcluding(vertices[0]) && excludable.isExcluding(vertices[1]) && excludable.isExcluding(vertices[2]) && excludable.isExcluding(vertices[3]);
-      }
-    };
-
-    RectangularFrame.prototype.isOverlapping = function(frame) {
-      return !this.isExcluding(frame);
-    };
-
-    return RectangularFrame;
-
-  })();
-
-  CircularFrame = (function() {
-
-    function CircularFrame(x, y, radius) {
-      var _ref;
-      _ref = [x, y, radius], this.x = _ref[0], this.y = _ref[1], this.radius = _ref[2];
-    }
-
-    CircularFrame.prototype.centerVertex = function() {
-      return new Vertex(this.x, this.y);
-    };
-
-    CircularFrame.prototype.isExcluding = function(excludable) {
-      var distance, dx, dy;
-      if (excludable instanceof Vertex) {
-        return !this.isOverlapping(excludable);
-      } else if (excludable instanceof CircularFrame) {
-        dx = this.x - excludable.x;
-        dy = this.y - excludable.y;
-        distance = Math.sqrt((dy * dy) + (dx * dx));
-        return distance > (this.radius + excludable.radius);
-      } else if (excludable instanceof RectangularFrame) {
-        return !this.isOverlapping(excludable);
-      }
-    };
-
-    CircularFrame.prototype.isOverlapping = function(excludable) {
-      var distance, squareDistance, topLeftV, topRightV, vertices;
-      if (excludable instanceof Vertex) {
-        squareDistance = Math.pow(this.x - excludable.x, 2) + Math.pow(this.y - excludable.y, 2);
-        return squareDistance < this.radius;
-      } else if (excludable instanceof CircularFrame) {
-        return this.isExcluding(excludable);
-      } else if (excludable instanceof RectangularFrame) {
-        vertices = excludable.vertices();
-        topLeftV = vertices[0];
-        topRightV = vertices[1];
-        distance = this.intersectionWith(topRightV, topLeftV);
-        console.log(distance.length());
-        return excludable.isExcluding(this.centerVertex()) || this.isExcluding(vertices[0]) && this.isExcluding(vertices[1]) && this.isExcluding(vertices[2]) && this.isExcluding(vertices[3]);
-      }
-    };
-
-    CircularFrame.prototype.intersectionWith = function(v1, v2) {
-      var cVector, closest, distanceV, proj, projV, segLength, segVUnit, segVector;
-      segVector = v1.vectorWith(v2);
-      cVector = v1.vectorWith(this.centerVertex());
-      segLength = segVector.length();
-      segVUnit = segVector.divideBy(segLength);
-      proj = cVector.dotProductOf(segVUnit);
-      if (proj <= 0) {
-        closest = v1;
-      } else if (proj > segLength) {
-        closest = v2;
+  $(document).ready(function() {
+    window.engine = new Core({
+      viewport: '#game_canvas',
+      fps: 30
+    });
+    window.engine.run();
+    return window.engine.$el.on('click', function(e) {
+      var bomb, canvasOffset, solider, x, y;
+      canvasOffset = window.engine.$el.offset();
+      x = e.pageX - canvasOffset.left;
+      y = e.pageY - canvasOffset.top;
+      if (e.shiftKey) {
+        return solider = window.engine.addEntity(new Soldier(), {
+          x: x,
+          y: y
+        });
       } else {
-        projV = segVUnit * proj;
-        closest = [v1.x + projV, v2 + projV];
+        return bomb = window.engine.addEntity(new Bomb(), {
+          x: x,
+          y: y
+        });
       }
-      return distanceV = cVector.subtract(closest);
-    };
-
-    return CircularFrame;
-
-  })();
-
-  Vertex = (function() {
-
-    function Vertex(x, y) {
-      var _ref;
-      _ref = [x, y], this.x = _ref[0], this.y = _ref[1];
-    }
-
-    Vertex.prototype.vectorWith = function(vertex) {
-      var vectorX, vectorY;
-      vectorX = this.x - vertex.x;
-      vectorY = this.y - vertex.y;
-      return new Vector(vectorX, vectorY);
-    };
-
-    return Vertex;
-
-  })();
-
-  Vector = (function(_super) {
-
-    __extends(Vector, _super);
-
-    function Vector() {
-      return Vector.__super__.constructor.apply(this, arguments);
-    }
-
-    Vector.prototype.length = function() {
-      return Math.sqrt((this.x * this.x) + (this.y * this.y));
-    };
-
-    Vector.prototype.subtract = function(vector) {
-      return new Vector(this.x - vector.x, this.y - vector.y);
-    };
-
-    Vector.prototype.divideBy = function(scalar) {
-      return (this.x / scalar) + (this.y / scalar);
-    };
-
-    Vector.prototype.dotProductOf = function(scalar) {
-      return (this.x * scalar) + (this.y * scalar);
-    };
-
-    return Vector;
-
-  })(Vertex);
+    });
+  });
 
 }).call(this);
