@@ -1,0 +1,24 @@
+#game_canvas {
+  position: relative;
+  margin: auto;
+  width: 600px;
+  height: 500px;
+  border: 1px #ddd solid;
+  overflow: hidden;
+}
+
+.bomb {
+  height: 48px;
+  width: 48px;
+  background: red;
+  border-radius: 50%;
+  font-size: 24px;
+  color: white;
+  text-align: center;
+}
+
+.soldier {
+  height: 24px;
+  width: 12px;
+  background: #3d3;
+}
