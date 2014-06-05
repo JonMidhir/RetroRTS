@@ -33,23 +33,29 @@ class CircularFrame
     else if excludable instanceof RectangularFrame
       vertices = excludable.vertices()
 
-      topLeftV = vertices[0]
-      topRightV = vertices[1]
+      topLeftV     = vertices[0]
+      topRightV    = vertices[1]
+      bottomRightV = vertices[2]
+      bottomLeftV  = vertices[3]
 
-      distance = @intersectionWith(topRightV, topLeftV)
-      console.log distance.length()
+      topIntersection    = @intersectionWith(topLeftV, topRightV)
+      rightIntersection  = @intersectionWith(topRightV, bottomRightV)
+      bottomIntersection = @intersectionWith(bottomRightV, bottomLeftV)
+      leftIntersection   = @intersectionWith(bottomLeftV, topLeftV)
 
       # is the centralVertex in the rectangle?
-      excludable.isExcluding(@centerVertex()) or
+      not excludable.isExcluding(@centerVertex()) or
       # or does any rect vertex intersect this circle?
-      @isExcluding(vertices[0]) and @isExcluding(vertices[1]) and
-      @isExcluding(vertices[2]) and @isExcluding(vertices[3])
+      topIntersection < @radius or
+      rightIntersection < @radius or
+      bottomIntersection < @radius or
+      leftIntersection < @radius
 
   # Determines intersection with a line,
   # see: http://doswa.com/2009/07/13/circle-segment-intersectioncollision.html
   intersectionWith: (v1, v2) ->
     segVector = v1.vectorWith(v2)
-    cVector   = v1.vectorWith(@centerVertex())
+    cVector   = @centerVertex().vectorWith(v2)
 
     segLength = segVector.length()
     segVUnit  = segVector.divideBy(segLength)
@@ -63,6 +69,8 @@ class CircularFrame
     else
       projV = segVUnit * proj
 
-      closest = [v1.x + projV, v2 + projV]
+      closest = new Vector(v1.x + projV, v1.y + projV)
 
-    distanceV = cVector.subtract(closest)
+    distanceV = @centerVertex().vectorWith(closest)
+
+    distanceV.length()

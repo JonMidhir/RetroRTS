@@ -1,9 +1,12 @@
 class Soldier extends Entity
   className: 'soldier'
-  width: 12
-  height: 24
+
   events:
     'click': 'didClick'
+
+  defaults:
+    width:  12
+    height: 24
 
   initialize: ->
     @health = 100
@@ -14,7 +17,7 @@ class Soldier extends Entity
     parseFloat(opacity, 10) is 0
 
   takeDamage: (damage) ->
-    # console.log "#{@worldId}: I'm taking damage!"
+    console.log "#{@worldId}: I'm taking damage!"
     @health -= damage
     @kill() if @health <= 0 and not @isDead()
 

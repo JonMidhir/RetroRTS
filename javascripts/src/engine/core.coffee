@@ -57,7 +57,7 @@ class Core
   getFrame: =>
     ++@frameCount
     for entity in @entities
-      @checkCollisions(entity) if entity.collidable
+      @checkCollisions(entity) if entity.isCollidable()
       @evaluateEntity(entity)
 
   # Evaluate a single entity
@@ -69,9 +69,11 @@ class Core
 
   # Check other collidables in the world for overlap
   checkCollisions: (entity) ->
-    for e in @entities when e isnt entity and e.collidable
-      vertex = entity.frame()?.centerVertex() if entity.worldId is 'c2'
+    for e in @entities when e isnt entity and e.isCollidable()
+      # vertex = entity.frame()?.centerVertex() if entity.worldId is 'c2'
       # console.log "Checking #{entity.worldId}: [#{vertex.x}, #{vertex.y}] r:#{entity.frame().radius} is overlapping #{e.worldId}" if entity.worldId is 'c2'
       # console.log entity.frame().isOverlapping(e.frame()) if entity.worldId is 'c2'
+
       if entity.frame().isOverlapping(e.frame())
-        true# entity.interactWith(e)
+        console.log "make damage"
+        entity.interactWith(e)

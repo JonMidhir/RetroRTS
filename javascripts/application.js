@@ -78,7 +78,7 @@
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         entity = _ref[_i];
-        if (entity.collidable) {
+        if (entity.isCollidable()) {
           this.checkCollisions(entity);
         }
         _results.push(this.evaluateEntity(entity));
@@ -94,21 +94,18 @@
     };
 
     Core.prototype.checkCollisions = function(entity) {
-      var e, vertex, _i, _len, _ref, _ref1, _results;
+      var e, _i, _len, _ref, _results;
       _ref = this.entities;
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         e = _ref[_i];
-        if (!(e !== entity && e.collidable)) {
-          continue;
-        }
-        if (entity.worldId === 'c2') {
-          vertex = (_ref1 = entity.frame()) != null ? _ref1.centerVertex() : void 0;
-        }
-        if (entity.frame().isOverlapping(e.frame())) {
-          _results.push(true);
-        } else {
-          _results.push(void 0);
+        if (e !== entity && e.isCollidable()) {
+          if (entity.frame().isOverlapping(e.frame())) {
+            console.log("make damage");
+            _results.push(entity.interactWith(e));
+          } else {
+            _results.push(void 0);
+          }
         }
       }
       return _results;
@@ -126,13 +123,9 @@
 
     Entity.prototype.tagName = 'div';
 
-    Entity.prototype.width = 48;
-
-    Entity.prototype.height = 48;
-
-    Entity.prototype.collidable = true;
-
     Entity.prototype.events = {};
+
+    Entity.prototype.defaults = {};
 
     function Entity(attributes) {
       if (attributes == null) {
@@ -154,23 +147,26 @@
     };
 
     Entity.prototype.render = function(options) {
-      var callback, defaults, event, styles, _ref;
+      var callback, event, globalDefaults, _ref;
       if (options == null) {
         options = {};
       }
-      defaults = {
+      globalDefaults = {
         x: 0,
-        y: 0
+        y: 0,
+        width: 48,
+        height: 48,
+        radius: 0,
+        opacity: 1.0,
+        collidable: true,
+        shape: 'rectangle'
       };
-      _.extend(defaults, options);
+      this._defaults = _.clone(this.defaults);
+      this._defaults = _.defaults(this._defaults, globalDefaults);
+      this.attributes = _.defaults(options, this._defaults);
       this.el = this.template();
       this.$el = $(this.el);
-      styles = {
-        position: 'absolute',
-        top: defaults.y - (this.height / 2),
-        left: defaults.x - (this.width / 2)
-      };
-      this.$el.css(styles);
+      this.$el.css(this.styles());
       _ref = this.events;
       for (event in _ref) {
         callback = _ref[event];
@@ -194,9 +190,26 @@
     };
 
     Entity.prototype.frame = function() {
-      var position;
-      position = this.$el.position();
-      return new RectangularFrame(position.left, position.top, position.left + this.$el.width(), position.top + this.$el.height());
+      if (this.attributes.shape === 'circular') {
+        return new CircularFrame(this.attributes.x, this.attributes.y, this.attributes.radius);
+      } else {
+        return new RectangularFrame(this.attributes.x, this.attributes.y, this.attributes.x + this.attributes.width, this.attributes.y + this.attributes.height);
+      }
+    };
+
+    Entity.prototype.isCollidable = function() {
+      return this.attributes.collidable;
+    };
+
+    Entity.prototype.styles = function() {
+      return {
+        position: 'absolute',
+        top: this.attributes.y - (this.attributes.height / 2),
+        left: this.attributes.x - (this.attributes.width / 2),
+        height: this.attributes.height,
+        width: this.attributes.width,
+        opacity: this.attributes.opacity
+      };
     };
 
     Entity.prototype.evaluate = function() {
@@ -348,7 +361,7 @@
     };
 
     CircularFrame.prototype.isOverlapping = function(excludable) {
-      var distance, squareDistance, topLeftV, topRightV, vertices;
+      var bottomIntersection, bottomLeftV, bottomRightV, leftIntersection, rightIntersection, squareDistance, topIntersection, topLeftV, topRightV, vertices;
       if (excludable instanceof Vertex) {
         squareDistance = Math.pow(this.x - excludable.x, 2) + Math.pow(this.y - excludable.y, 2);
         return squareDistance < this.radius;
@@ -358,16 +371,20 @@
         vertices = excludable.vertices();
         topLeftV = vertices[0];
         topRightV = vertices[1];
-        distance = this.intersectionWith(topRightV, topLeftV);
-        console.log(distance.length());
-        return excludable.isExcluding(this.centerVertex()) || this.isExcluding(vertices[0]) && this.isExcluding(vertices[1]) && this.isExcluding(vertices[2]) && this.isExcluding(vertices[3]);
+        bottomRightV = vertices[2];
+        bottomLeftV = vertices[3];
+        topIntersection = this.intersectionWith(topLeftV, topRightV);
+        rightIntersection = this.intersectionWith(topRightV, bottomRightV);
+        bottomIntersection = this.intersectionWith(bottomRightV, bottomLeftV);
+        leftIntersection = this.intersectionWith(bottomLeftV, topLeftV);
+        return !excludable.isExcluding(this.centerVertex()) || topIntersection < this.radius || rightIntersection < this.radius || bottomIntersection < this.radius || leftIntersection < this.radius;
       }
     };
 
     CircularFrame.prototype.intersectionWith = function(v1, v2) {
       var cVector, closest, distanceV, proj, projV, segLength, segVUnit, segVector;
       segVector = v1.vectorWith(v2);
-      cVector = v1.vectorWith(this.centerVertex());
+      cVector = this.centerVertex().vectorWith(v2);
       segLength = segVector.length();
       segVUnit = segVector.divideBy(segLength);
       proj = cVector.dotProductOf(segVUnit);
@@ -377,9 +394,10 @@
         closest = v2;
       } else {
         projV = segVUnit * proj;
-        closest = [v1.x + projV, v2 + projV];
+        closest = new Vector(v1.x + projV, v1.y + projV);
       }
-      return distanceV = cVector.subtract(closest);
+      distanceV = this.centerVertex().vectorWith(closest);
+      return distanceV.length();
     };
 
     return CircularFrame;
@@ -404,6 +422,11 @@
       'click': 'didClick'
     };
 
+    Bomb.prototype.defaults = {
+      shape: 'circular',
+      radius: 24
+    };
+
     Bomb.prototype.initialize = function() {
       return this.createdAt = new Date();
     };
@@ -414,44 +437,38 @@
       return parseFloat(opacity, 10) === 0;
     };
 
+    Bomb.prototype.explode = function(pixels) {
+      if (pixels == null) {
+        pixels = 10;
+      }
+      this.attributes.height += pixels;
+      this.attributes.width += pixels;
+      return this.attributes.radius += pixels / 2;
+    };
+
     Bomb.prototype.isExploding = function() {
       var date;
       date = new Date();
       return date - this.createdAt > 3000;
     };
 
-    Bomb.prototype.frame = function() {
-      var centerX, centerY, frame, position, radius;
-      position = this.$el.position();
-      radius = this.$el.width() / 2;
-      centerX = position.left + radius;
-      centerY = position.top + radius;
-      return frame = new CircularFrame(centerX, centerY, radius);
-    };
-
-    Bomb.prototype.evaluate = function() {
-      var growth, height, opacity, position, styles, width;
-      growth = 20;
-      if (!this.isExploding()) {
-        return;
-      }
-      position = this.$el.position();
-      height = this.$el.height() + growth;
-      width = this.$el.width() + growth;
-      opacity = parseFloat(this.$el.css('opacity'), 10);
-      opacity = opacity - 0.2;
+    Bomb.prototype.fade = function(dOpacity) {
+      var opacity;
+      opacity = this.attributes.opacity - dOpacity;
       opacity = Math.round(opacity * 100) / 100;
       if (opacity < 0.0) {
         opacity = 0;
       }
-      styles = {
-        top: position.top - (growth / 2),
-        left: position.left - (growth / 2),
-        height: height,
-        width: width,
-        opacity: opacity
-      };
-      return this.$el.css(styles);
+      return this.attributes.opacity = opacity;
+    };
+
+    Bomb.prototype.evaluate = function() {
+      if (!this.isExploding()) {
+        return;
+      }
+      this.explode(40);
+      this.fade(0.4);
+      return this.$el.css(this.styles());
     };
 
     Bomb.prototype.didClick = function(e) {
@@ -472,12 +489,13 @@
 
     Soldier.prototype.className = 'soldier';
 
-    Soldier.prototype.width = 12;
-
-    Soldier.prototype.height = 24;
-
     Soldier.prototype.events = {
       'click': 'didClick'
+    };
+
+    Soldier.prototype.defaults = {
+      width: 12,
+      height: 24
     };
 
     Soldier.prototype.initialize = function() {
@@ -492,6 +510,7 @@
     };
 
     Soldier.prototype.takeDamage = function(damage) {
+      console.log("" + this.worldId + ": I'm taking damage!");
       this.health -= damage;
       if (this.health <= 0 && !this.isDead()) {
         return this.kill();

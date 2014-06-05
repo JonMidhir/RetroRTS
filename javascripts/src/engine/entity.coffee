@@ -2,11 +2,10 @@ class Entity
   content: ''
   className: 'entity'
   tagName: 'div'
-  width: 48
-  height: 48
-  collidable: true
 
   events: {}
+
+  defaults: {}
 
   # Set the default attributes hash
   constructor: (attributes = {}) ->
@@ -24,24 +23,24 @@ class Entity
 
   # Render template with styles
   render: (options = {}) ->
-    # Todo: Make these class variable?
-    defaults =
-      x: 0
-      y: 0
+    globalDefaults =
+      x:      0
+      y:      0
+      width:  48
+      height: 48
+      radius: 0
+      opacity: 1.0
+      collidable: true
+      shape: 'rectangle'
 
-    _.extend(defaults, options)
+    @_defaults  = _.clone(@defaults)
+    @_defaults  = _.defaults(@_defaults, globalDefaults)
+    @attributes = _.defaults(options, @_defaults)
 
     @el  = @template()
     @$el = $(@el)
 
-    styles =
-      position: 'absolute'
-      top:      defaults.y - (@height / 2)
-      left:     defaults.x - (@width / 2)
-
-    @$el.css(styles)
-
-    # console.log @events
+    @$el.css(@styles())
 
     for event, callback of @events
       @$el.on event, {}, @[callback]
@@ -61,14 +60,30 @@ class Entity
 
   # Returns the frame of this entity
   frame: ->
-    position = @$el.position()
-
-    new RectangularFrame(
-      position.left,
-      position.top,
-      position.left + @$el.width(),
-      position.top + @$el.height()
+    if @attributes.shape is 'circular'
+      new CircularFrame(
+        @attributes.x,
+        @attributes.y,
+        @attributes.radius
       )
+    else
+      new RectangularFrame(
+        @attributes.x,
+        @attributes.y,
+        @attributes.x + @attributes.width,
+        @attributes.y + @attributes.height
+        )
+
+  isCollidable: -> @attributes.collidable
+
+  # Returns a set of styles for the .css() method
+  styles: ->
+    position: 'absolute'
+    top:      @attributes.y - (@attributes.height / 2)
+    left:     @attributes.x - (@attributes.width / 2)
+    height:   @attributes.height
+    width:    @attributes.width
+    opacity:  @attributes.opacity
 
   # Evaluate is run once per frame when the entity is registered
   evaluate: ->
